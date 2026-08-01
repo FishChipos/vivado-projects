@@ -1,0 +1,4 @@
+projects/*/*
+!projects/*/constrs
+!projects/*/src
+!projects/*/build.tcl
