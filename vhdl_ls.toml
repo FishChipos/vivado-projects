@@ -3,5 +3,5 @@ standard = "2008"
 
 [libraries]
 led_test.files = [
-    "led_test/*.vhd"
+    "projects/led_test/src/**/*.vhd"
 ]
