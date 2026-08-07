@@ -3,5 +3,13 @@ standard = "2008"
 
 [libraries]
 led_test.files = [
-    "projects/led_test/src/**/*.vhd"
+    "projects/led_test/*/*.vhdl"
+]
+
+calculator.files = [
+    "projects/calculator/*/*.vhdl"
+]
+
+hdmi_test.files = [
+    "projects/hdmi_test/*/*.vhdl"
 ]

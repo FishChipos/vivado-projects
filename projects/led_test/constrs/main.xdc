@@ -1,3 +1,5 @@
+create_clock -add -name clk_pin -period 8.00 -waveform {0 4} [get_ports clk]
+
 set_property -dict { \
     IOSTANDARD LVCMOS33 \
     PACKAGE_PIN K17 \
@@ -14,5 +16,3 @@ set_property -dict { \
     DRIVE 12 \
     SLEW SLOW \
 } [get_ports led]
-
-create_clock -add -name clk_pin -period 8.00 -waveform {0 4} [get_ports clk];

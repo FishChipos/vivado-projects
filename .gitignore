@@ -1,4 +1,5 @@
-projects/*/*
-!projects/*/constrs
-!projects/*/src
+projects/*/*.*/
+projects/*/*.xpr
+!projects/*/constrs/
+!projects/*/src/
 !projects/*/build.tcl
