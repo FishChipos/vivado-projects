@@ -1,7 +1,7 @@
 *
-!src
-!constrs
-!tb
+!src/**
+!constrs/**
+!tb/**
 !build.tcl
 !vhdl_ls.toml
 !.gitignore
