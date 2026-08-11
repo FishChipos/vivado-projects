@@ -1,3 +1,6 @@
 [submodule "boards"]
 	path = boards
 	url = https://github.com/Digilent/vivado-boards.git
+[submodule "library"]
+	path = library
+	url = https://github.com/Digilent/vivado-library.git
