@@ -12,7 +12,7 @@ package types is
     type tmds_t is record
         clk_p : std_logic;
         clk_n : std_logic;
-        data_p : std_logic;
-        data_n : std_logic;
+        data_p : std_logic_vector(2 downto 0);
+        data_n : std_logic_vector(2 downto 0);
     end record;
 end package;
