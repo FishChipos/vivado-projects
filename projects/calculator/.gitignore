@@ -1,6 +1,9 @@
 *
+!src/
 !src/**
+!constrs
 !constrs/**
+!tb
 !tb/**
 !build.tcl
 !vhdl_ls.toml
