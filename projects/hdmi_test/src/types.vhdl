@@ -15,4 +15,9 @@ package types is
         data_p : std_logic_vector(2 downto 0);
         data_n : std_logic_vector(2 downto 0);
     end record;
+
+    type pixel_t is record
+        x : natural range 0 to 1280 - 1;
+        y : natural range 0 to 720 - 1;
+    end record;
 end package;
