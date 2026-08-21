@@ -1,8 +1,0 @@
-*
-!src
-!src/**
-!constrs
-!constrs/**
-!build.tcl
-!vhdl_ls.toml
-!.gitignore

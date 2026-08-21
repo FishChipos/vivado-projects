@@ -5,8 +5,8 @@ package ip is
     component clk_wiz_0
         port (
             pixel_clk : out std_logic;
+            serial_clk : out std_logic;
             reset : in std_logic;
-            locked : out std_logic;
             sys_clk : in std_logic
         );
     end component;
@@ -36,7 +36,8 @@ package ip is
             vid_pvde : in std_logic;
             vid_phsync : in std_logic;
             vid_pvsync : in std_logic;
-            pixelclk : in std_logic 
+            pixelclk : in std_logic;
+            serialclk : in std_logic
         );
     end component;
 end package;

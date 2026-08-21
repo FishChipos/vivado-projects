@@ -1,0 +1,12 @@
+*/*.*/
+*/platform/
+*/out/
+*/.Xil/
+*/_ide/
+*/*.xsa
+*/*.xpr
+*/*.jou
+*/*.log
+*/*.dmp
+*/*.str
+*/*.logfile

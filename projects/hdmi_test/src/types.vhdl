@@ -2,6 +2,9 @@ library ieee;
 use ieee.std_logic_1164.all;
 
 package types is
+    constant WIDTH : natural := 1280;
+    constant HEIGHT : natural := 720;
+
     type vid_t is record
         data : std_logic_vector(23 downto 0);
         hsync : std_logic;
@@ -17,7 +20,7 @@ package types is
     end record;
 
     type pixel_t is record
-        x : natural range 0 to 1280 - 1;
-        y : natural range 0 to 720 - 1;
+        x : natural range 0 to WIDTH - 1;
+        y : natural range 0 to HEIGHT - 1;
     end record;
 end package;

@@ -2,6 +2,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 
 use work.types.all;
+use work.ip.all;
 
 entity main is
     port (
@@ -10,7 +11,12 @@ entity main is
         switches : in switches_t;
         buttons : in buttons_t;
         leds : out leds_t;
-        rgb_led_pins : out rgb_led_pins_t
+        rgb_led_pins : out rgb_led_pins_t;
+
+        ps_clk : inout std_logic;
+        ps_srstb : inout std_logic;
+        mio : inout std_logic_vector(53 downto 0);
+        ps_porb : inout std_logic
     );
 end entity;
 
@@ -65,6 +71,14 @@ begin
             color => rgb_led_color,
             brightness => 5,
             pins => rgb_led_pins
+        );
+
+    processing_system7_0_inst : processing_system7_0 
+        port map (
+            mio => mio,
+            ps_srstb => ps_srstb,
+            ps_clk => ps_clk,
+            ps_porb => ps_porb
         );
 
     process (clk, rst) is
