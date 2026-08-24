@@ -19,6 +19,9 @@ architecture arch of main is
     signal vid : vid_t;
 
     signal pixel : pixel_t;
+    signal parity : parity_t;
+    signal parity_counter : parity_counter_t;
+    signal is_white : std_logic;
 
     signal rstn : std_logic;
 begin
@@ -59,33 +62,51 @@ begin
         );
 
     rstn <= not rst;
+    is_white <= parity.x xor parity.y;
 
     process (pixel_clk) is
     begin
         if (rising_edge(pixel_clk)) then
             if (rst = '1') then
                 pixel <= (others => 0);
+                parity <= (others => '0');
                 vid.data <= (others => '0');
             else
                 if (vid.vde = '1') then
-                    if (pixel.x <= pixel.y) then
+                    if (is_white = '1') then
                         vid.data <= (others => '1');
                     else
                         vid.data <= (others => '0');
                     end if;
                 end if;
 
+                if (vid.hsync = '1') then
+                    pixel.x <= 0;
+                end if;
+
                 if (vid.vsync = '1') then
                     pixel.y <= 0;
-                elsif (vid.vde = '1' and pixel.x = WIDTH - 1) then
-                    pixel.y <= pixel.y + 1;
                 end if;
 
                 if (vid.vde = '1') then
-                    if (pixel.x = WIDTH - 1) then
-                        pixel.x <= 0;
+                    pixel.x <= pixel.x + 1;
+
+                    if (parity_counter.x = 3) then
+                        parity_counter.x <= 0;
+                        parity.x <= not parity.x;
                     else
-                        pixel.x <= pixel.x + 1;
+                        parity_counter.x <= parity_counter.x + 1;
+                    end if;
+
+                    if (pixel.x = WIDTH - 1) then
+                        pixel.y <= pixel.y + 1;
+
+                        if (parity_counter.y = 3) then
+                            parity_counter.y <= 0;
+                            parity.y <= not parity.y;
+                        else
+                            parity_counter.y <= parity_counter.y + 1;
+                        end if;
                     end if;
                 end if;
             end if;

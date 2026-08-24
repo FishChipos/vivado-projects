@@ -23,4 +23,14 @@ package types is
         x : natural range 0 to WIDTH - 1;
         y : natural range 0 to HEIGHT - 1;
     end record;
+
+    type parity_t is record
+        x : std_logic;
+        y : std_logic;
+    end record;
+
+    type parity_counter_t is record
+        x : natural range 0 to 3;
+        y : natural range 0 to 3;
+    end record;
 end package;
