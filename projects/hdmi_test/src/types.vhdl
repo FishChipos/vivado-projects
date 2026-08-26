@@ -5,8 +5,14 @@ package types is
     constant WIDTH : natural := 1280;
     constant HEIGHT : natural := 720;
 
+    type buttons_t is record
+        cycle_pattern : std_logic;
+    end record;
+
+    subtype rgb_t is std_logic_vector(23 downto 0);
+
     type vid_t is record
-        data : std_logic_vector(23 downto 0);
+        data : rgb_t;
         hsync : std_logic;
         vsync : std_logic;
         vde : std_logic;
@@ -24,13 +30,10 @@ package types is
         y : natural range 0 to HEIGHT - 1;
     end record;
 
-    type parity_t is record
-        x : std_logic;
-        y : std_logic;
-    end record;
-
-    type parity_counter_t is record
-        x : natural range 0 to 3;
-        y : natural range 0 to 3;
-    end record;
+    type pattern_t is (
+        PATTERN_SOLID,
+        PATTERN_CHECKERS1,
+        PATTERN_CHECKERS2,
+        PATTERN_CHECKERS4
+    );
 end package;

@@ -9,6 +9,7 @@ entity main is
     port (
         rst : in std_logic;
         sys_clk : in std_logic;
+        buttons : in buttons_t;
         tmds : out tmds_t
     );
 end entity;
@@ -18,10 +19,12 @@ architecture arch of main is
     signal serial_clk : std_logic;
     signal vid : vid_t;
 
+    signal pattern : pattern_t;
+
+    signal buttons_prev : buttons_t;
+    signal buttons_pressed : buttons_t;
+
     signal pixel : pixel_t;
-    signal parity : parity_t;
-    signal parity_counter : parity_counter_t;
-    signal is_white : std_logic;
 
     signal rstn : std_logic;
 begin
@@ -61,24 +64,29 @@ begin
             serialclk => serial_clk
         );
 
+    pat_gen_inst : entity work.pat_gen
+        port map (
+            clk => pixel_clk,
+            rst => rst,
+            hsync => vid.hsync,
+            vsync => vid.vsync,
+            data => vid.data,
+            pixel => pixel,
+            pattern => pattern
+        );                
+
     rstn <= not rst;
-    is_white <= parity.x xor parity.y;
 
     process (pixel_clk) is
     begin
         if (rising_edge(pixel_clk)) then
             if (rst = '1') then
-                pixel <= (others => 0);
-                parity <= (others => '0');
-                vid.data <= (others => '0');
+                pattern <= PATTERN_CHECKERS1;
+                buttons_prev <= (others => '0');
+                buttons_pressed <= (others => '0');
             else
-                if (vid.vde = '1') then
-                    if (is_white = '1') then
-                        vid.data <= (others => '1');
-                    else
-                        vid.data <= (others => '0');
-                    end if;
-                end if;
+                buttons_prev <= (cycle_pattern => buttons.cycle_pattern);
+                buttons_pressed <= (cycle_pattern => buttons.cycle_pattern and not buttons_prev.cycle_pattern);
 
                 if (vid.hsync = '1') then
                     pixel.x <= 0;
@@ -91,24 +99,27 @@ begin
                 if (vid.vde = '1') then
                     pixel.x <= pixel.x + 1;
 
-                    if (parity_counter.x = 3) then
-                        parity_counter.x <= 0;
-                        parity.x <= not parity.x;
-                    else
-                        parity_counter.x <= parity_counter.x + 1;
-                    end if;
-
                     if (pixel.x = WIDTH - 1) then
                         pixel.y <= pixel.y + 1;
-
-                        if (parity_counter.y = 3) then
-                            parity_counter.y <= 0;
-                            parity.y <= not parity.y;
-                        else
-                            parity_counter.y <= parity_counter.y + 1;
-                        end if;
                     end if;
                 end if;
+
+                case (pattern) is
+                    when PATTERN_CHECKERS1 =>
+                        if (buttons_pressed.cycle_pattern) then
+                            pattern <= PATTERN_CHECKERS2;
+                        end if;
+
+                    when PATTERN_CHECKERS2 =>
+                        if (buttons_pressed.cycle_pattern) then
+                            pattern <= PATTERN_CHECKERS4;
+                        end if;
+
+                    when PATTERN_CHECKERS4 =>
+                        if (buttons_pressed.cycle_pattern) then
+                            pattern <= PATTERN_CHECKERS1;
+                        end if;
+                end case;
             end if;
         end if;
     end process;
