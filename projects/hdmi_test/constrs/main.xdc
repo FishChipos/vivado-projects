@@ -11,3 +11,4 @@ set_property -dict { PACKAGE_PIN A20 IOSTANDARD TMDS_33 } [get_ports { tmds[data
 set_property -dict { PACKAGE_PIN B19 IOSTANDARD TMDS_33 } [get_ports { tmds[data_p][2] }];
 
 set_property -dict { PACKAGE_PIN K18 IOSTANDARD LVCMOS33 } [get_ports { rst }];
+set_property -dict { PACKAGE_PIN Y16 IOSTANDARD LVCMOS33 } [get_ports { buttons[cycle_pattern] }];

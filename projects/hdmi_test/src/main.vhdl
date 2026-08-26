@@ -81,7 +81,7 @@ begin
     begin
         if (rising_edge(pixel_clk)) then
             if (rst = '1') then
-                pattern <= PATTERN_CHECKERS1;
+                pattern <= PATTERN_SOLID;
                 buttons_prev <= (others => '0');
                 buttons_pressed <= (others => '0');
             else
@@ -99,27 +99,18 @@ begin
                 if (vid.vde = '1') then
                     pixel.x <= pixel.x + 1;
 
-                    if (pixel.x = WIDTH - 1) then
+                    if (pixel.x = DISPLAY_WIDTH - 1) then
                         pixel.y <= pixel.y + 1;
                     end if;
                 end if;
 
-                case (pattern) is
-                    when PATTERN_CHECKERS1 =>
-                        if (buttons_pressed.cycle_pattern) then
-                            pattern <= PATTERN_CHECKERS2;
-                        end if;
-
-                    when PATTERN_CHECKERS2 =>
-                        if (buttons_pressed.cycle_pattern) then
-                            pattern <= PATTERN_CHECKERS4;
-                        end if;
-
-                    when PATTERN_CHECKERS4 =>
-                        if (buttons_pressed.cycle_pattern) then
-                            pattern <= PATTERN_CHECKERS1;
-                        end if;
-                end case;
+                if (buttons_pressed.cycle_pattern = '1') then
+                    if (pattern = pattern_t'right) then
+                        pattern <= pattern_t'left;
+                    else
+                        pattern <= pattern_t'rightof(pattern);
+                    end if;
+                end if;
             end if;
         end if;
     end process;

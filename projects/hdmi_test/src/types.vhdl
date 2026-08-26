@@ -2,8 +2,8 @@ library ieee;
 use ieee.std_logic_1164.all;
 
 package types is
-    constant WIDTH : natural := 1280;
-    constant HEIGHT : natural := 720;
+    constant DISPLAY_WIDTH : natural := 1280;
+    constant DISPLAY_HEIGHT : natural := 720;
 
     type buttons_t is record
         cycle_pattern : std_logic;
@@ -26,11 +26,12 @@ package types is
     end record;
 
     type pixel_t is record
-        x : natural range 0 to WIDTH - 1;
-        y : natural range 0 to HEIGHT - 1;
+        x : natural range 0 to DISPLAY_WIDTH - 1;
+        y : natural range 0 to DISPLAY_HEIGHT - 1;
     end record;
 
     type pattern_t is (
+        PATTERN_BLANK,
         PATTERN_SOLID,
         PATTERN_CHECKERS1,
         PATTERN_CHECKERS2,

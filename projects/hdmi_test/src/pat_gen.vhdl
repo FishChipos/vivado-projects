@@ -33,22 +33,28 @@ begin
                 set_color_black;
             else
                 case (pattern) is
+                    when PATTERN_BLANK =>
+                        set_color_black;
+
+                    when PATTERN_SOLID =>
+                        set_color_white;
+
                     when PATTERN_CHECKERS1 =>
-                        if (pixel.x mod 2 = 0 and pixel.y mod 2 = 0) then
+                        if (pixel.x mod 2 < 1 and pixel.y mod 2 < 1) then
                             set_color_white;
                         else
                             set_color_black;
                         end if;
 
                     when PATTERN_CHECKERS2 =>
-                        if (pixel.x mod 4 = 0 and pixel.y mod 4 = 0) then
+                        if (pixel.x mod 4 < 2 and pixel.y mod 4 < 2) then
                             set_color_white;
                         else
                             set_color_black;
                         end if;
 
                     when PATTERN_CHECKERS4 =>
-                        if (pixel.x mod 8 = 0 and pixel.y mod 8 = 0) then
+                        if (pixel.x mod 8 < 4 and pixel.y mod 8 < 4) then
                             set_color_white;
                         else
                             set_color_black;
