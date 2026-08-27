@@ -1,52 +1,33 @@
-use work.fixed_point.all;
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.fixed_pkg.all;
+
 use work.vector2.all;
-use work.color.all;
 
 package graphics is
-    type triangle_t is array (0 to 2) of vector2_t;
+    constant DISPLAY_WIDTH : fixed_t := to_fixed(1280);
+    constant DISPLAY_HEIGHT : fixed_t := to_fixed(720);
 
-    function is_in_triangle (point : vector2_t; triangle : triangle_t) return boolean;
+    type param_triangle_t is record
+        a : vector2_t;
+        b : vector2_t;
+        c : vector2_t;
+    end record;
 
-    type triangle_weights_t is array (0 to 3) of fixed_point_t;
-    function get_triangle_weights (point : vector2_t; triangle : triangle_t) return triangle_weights_t;
-    function get_triangle_pixel (point : vector2_t; triangle : triangle_t) return color_t;
-
-    type rectangle_t is array (0 to 1) of triangle_t;
+    function next_pixel (pixel : vector2_t) return vector2_t;
 end package;
 
 package body graphics is
-    function is_in_triangle (point : vector2_t; triangle : triangle_t) return boolean is
-        variable weights : triangle_weights_t := get_triangle_weights(point, triangle);
+    function next_pixel (pixel : vector2_t) return vector2_t is 
     begin
-        return weights(0) >= to_fixed_point(0) and
-               weights(0) <= to_fixed_point(1) and
-               weights(1) >= to_fixed_point(0) and
-               weights(1) <= to_fixed_point(1) and
-               weights(2) >= to_fixed_point(0) and
-               weights(2) <= to_fixed_point(1);
-    end function;
-
-    function get_triangle_weights (point : vector2_t; triangle : triangle_t) return triangle_weights_t is
-        variable a : vector2_t := triangle(0);
-        variable b : vector2_t := triangle(1) - a;
-        variable c : vector2_t := triangle(2) - a;
-        variable p : vector2_t := point - a;
-
-        variable d : fixed_point_t := b.x * c.y - c.x * b.y;
-    begin
-        return (
-            (p.x * (b.y - c.y) + p.y * (c.x - b.x) + d) / d,
-            (p.x * c.y - p.y * c.x) / d,
-            (p.y * b.x - p.x * b.y) / d
-        );
-    end function;
-
-    function get_triangle_pixel (point : vector2_t; triangle : triangle_t) return color_t is
-    begin
-        if (is_in_triangle(point, triangle)) then
-            return COLOR_WHITE;
+        if (pixel.x >= DISPLAY_WIDTH) then
+            if (pixel.y >= DISPLAY_HEIGHT) then
+                return to_vector2(0, 0);
+            else
+                return (to_fixed(0), resize_fixed(pixel.y + 1));
+            end if;
         else
-            return COLOR_BLACK;
+            return (resize_fixed(pixel.x + 1), pixel.y);
         end if;
     end function;
 end package body;

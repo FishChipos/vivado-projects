@@ -4,23 +4,23 @@ use ieee.std_logic_1164.all;
 package ip is
     component clk_wiz_0
         port (
-            pixel_clk : out std_logic;
-            serial_clk : out std_logic;
             reset : in std_logic;
-            sys_clk : in std_logic
+            sys_clk : in std_logic;
+            pixel_clk : out std_logic;
+            serial_clk : out std_logic
         );
     end component;
 
     component v_tc_0
         port (
             clk : in std_logic;
+            resetn : in std_logic;
             clken : in std_logic;
             gen_clken : in std_logic;
             sof_state : in std_logic;
             hsync_out : out std_logic;
             vsync_out : out std_logic;
             active_video_out : out std_logic;
-            resetn : in std_logic;
             fsync_out : out std_logic_vector(0 downto 0) 
         );
     end component;
@@ -38,6 +38,21 @@ package ip is
             vid_pvsync : in std_logic;
             pixelclk : in std_logic;
             serialclk : in std_logic
+        );
+    end component;
+
+    component div_gen_0
+        port (
+            aclk : in std_logic;
+            aresetn : in std_logic;
+            s_axis_divisor_tvalid : in std_logic;
+            s_axis_divisor_tready : out std_logic;
+            s_axis_divisor_tdata : in std_logic_vector(23 downto 0);
+            s_axis_dividend_tvalid : in std_logic;
+            s_axis_dividend_tready : out std_logic;
+            s_axis_dividend_tdata : in std_logic_vector(23 downto 0);
+            m_axis_dout_tvalid : out std_logic;
+            m_axis_dout_tdata : out std_logic_vector(39 downto 0) 
         );
     end component;
 end package;
