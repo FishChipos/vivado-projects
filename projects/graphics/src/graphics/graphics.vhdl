@@ -3,6 +3,7 @@ use ieee.std_logic_1164.all;
 use ieee.fixed_pkg.all;
 
 use work.vector2.all;
+use work.fixed.all;
 
 package graphics is
     constant DISPLAY_WIDTH : fixed_t := to_fixed(1280);

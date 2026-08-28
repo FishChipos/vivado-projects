@@ -44,15 +44,13 @@ package ip is
     component div_gen_0
         port (
             aclk : in std_logic;
-            aresetn : in std_logic;
+            aclken : in std_logic;
             s_axis_divisor_tvalid : in std_logic;
-            s_axis_divisor_tready : out std_logic;
             s_axis_divisor_tdata : in std_logic_vector(23 downto 0);
             s_axis_dividend_tvalid : in std_logic;
-            s_axis_dividend_tready : out std_logic;
             s_axis_dividend_tdata : in std_logic_vector(23 downto 0);
             m_axis_dout_tvalid : out std_logic;
-            m_axis_dout_tdata : out std_logic_vector(39 downto 0) 
+            m_axis_dout_tdata : out std_logic_vector(47 downto 0) 
         );
     end component;
 end package;

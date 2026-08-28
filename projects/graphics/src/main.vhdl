@@ -21,14 +21,8 @@ architecture arch of main is
         to_vector2(0, 720)
     );
 
-    type state_t is (
-        S_WAITING,
-        S_DRAWING
-    );
-
-    signal state : state_t;
-
-    signal drawing : std_logic;
+    type vid_timing_pipe_t is array (67 downto 1) of vid_timing_t;
+    signal vid_timing_pipe : vid_timing_pipe_t;
 
     signal pixel : vector2_t;
 
@@ -44,8 +38,7 @@ architecture arch of main is
     signal serial_clk : std_logic;
 
     signal vid : vid_t;
-
-    signal resetn : std_logic;
+    signal vid_timing : vid_timing_t;
 begin
     clk_wiz_0_inst : clk_wiz_0
         port map (
@@ -58,13 +51,13 @@ begin
     v_tc_0_inst : v_tc_0
         port map (
             clk => pixel_clk,
-            clken => drawing,
+            clken => '1',
             gen_clken => '1',
             sof_state => '0',
-            hsync_out => vid.hsync,
-            vsync_out => vid.vsync,
-            active_video_out => vid.vde,
-            resetn => resetn,
+            hsync_out => vid_timing.hsync,
+            vsync_out => vid_timing.vsync,
+            active_video_out => vid_timing.vde,
+            resetn => not buttons.reset,
             fsync_out => open
         );
 
@@ -76,9 +69,9 @@ begin
             tmds_data_n => tmds.data_n,
             arst => buttons.reset,
             vid_pdata => vid.data,
-            vid_pvde => vid.vde,
-            vid_phsync => vid.hsync,
-            vid_pvsync => vid.vsync,
+            vid_pvde => vid.timing.vde,
+            vid_phsync => vid.timing.hsync,
+            vid_pvsync => vid.timing.vsync,
             pixelclk => pixel_clk,
             serialclk => serial_clk
         );
@@ -95,7 +88,6 @@ begin
             color => triangle_color
         );
 
-    resetn <= not buttons.reset;
 
     process (pixel_clk) is
     begin
@@ -103,29 +95,20 @@ begin
             if (buttons.reset = '1') then
                 pixel <= to_vector2(0, 0);
                 triangle_hold <= '0';
-                drawing <= '0';
-                state <= S_WAITING;
             else
-                case (state) is
-                    when S_WAITING =>
-                        if (triangle_valid = '1') then
-                            drawing <= '1';
-                            state <= S_DRAWING;
-                        end if;
-                    when S_DRAWING =>
-                        if (triangle_hit = '1') then
-                            vid.data <= triangle_color;
-                        else
-                            vid.data <= (others => '0');
-                        end if;
+                if (triangle_hit = '1') then
+                    vid.data <= triangle_color;
+                else
+                    vid.data <= (others => '0');
+                end if;
 
-                        if (vid.vde = '1') then
-                            triangle_hold <= '0';
-                            pixel <= next_pixel(pixel);
-                        else
-                            triangle_hold <= '1';
-                        end if;
-                end case;
+                vid.timing <= vid_timing_pipe(vid_timing_pipe'left);
+
+                vid_timing_pipe <= vid_timing_pipe(vid_timing_pipe'left - 1 downto vid_timing_pipe'right) & vid_timing;
+
+                if (vid_timing.vde = '1') then
+                    pixel <= next_pixel(pixel);
+                end if;
             end if;
         end if;
     end process;

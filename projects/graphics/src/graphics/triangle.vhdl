@@ -5,6 +5,7 @@ use ieee.fixed_pkg.all;
 
 use work.graphics.all;
 use work.vector2.all;
+use work.fixed.all;
 use work.types.all;
 use work.ip.all;
 
@@ -22,28 +23,33 @@ entity triangle is
 end entity;
 
 architecture arch of triangle is
-    type state_t is (
-        S_SETUP1,
-        S_SETUP2,
-        S_SETUP3,
-        S_SETUP4,
-        S_PIPING
-    );
-
-    signal state : state_t;
-
-    signal piping_counter : natural range 0 to 5;
+    constant LATENCY : natural := 15;    
+    constant LATENCY_DG : natural := 52;
+    signal valid_pipe : std_logic_vector(LATENCY + LATENCY_DG downto 1);
 
     signal b : vector2_t;
     signal c : vector2_t;
 
+    signal d1 : fixed_mul_t;
+    signal d2 : fixed_mul_t;
     signal d : fixed_t;
     signal invd : fixed_t;
 
     signal p : vector2_t;
-    signal wbn : fixed_t;
-    signal wcn : fixed_t;
 
+    signal wbn1 : fixed_mul_t;
+    signal wbn2 : fixed_mul_t;
+    signal wcn1 : fixed_mul_t;
+    signal wcn2 : fixed_mul_t;
+
+    type pipe_waitdg_t is array (LATENCY_DG + 2 downto 1) of fixed_t;
+    signal wbn : pipe_waitdg_t;
+    signal wcn : pipe_waitdg_t;
+
+    signal wbi : fixed_mul_t;
+    signal wci : fixed_mul_t;
+
+    signal wa : fixed_t;
     signal wb : fixed_t;
     signal wc : fixed_t;
 
@@ -51,100 +57,87 @@ architecture arch of triangle is
     signal inb : std_logic;
     signal inc : std_logic;
 
-    signal dgrstn : std_logic;
-    signal dgen : std_logic;
     signal dgdivisor : std_logic_vector(23 downto 0);
     signal dgdividend : std_logic_vector(23 downto 0);
-    signal dgvalid : std_logic;
-    signal dgout : std_logic_vector(39 downto 0);
+    signal dgout : std_logic_vector(47 downto 0);
 begin
     div_gen_0_inst : div_gen_0
         port map (
             aclk => clk,
-            aresetn => dgrstn,
-            s_axis_divisor_tvalid => dgen,
-            s_axis_divisor_tready => open,
+            aclken => not hold,
+            s_axis_divisor_tvalid => '1',
             s_axis_divisor_tdata => dgdivisor,
-            s_axis_dividend_tvalid => dgen,
-            s_axis_dividend_tready => open,
+            s_axis_dividend_tvalid => '1',
             s_axis_dividend_tdata => dgdividend,
-            m_axis_dout_tvalid => dgvalid,
+            m_axis_dout_tvalid => open,
             m_axis_dout_tdata => dgout
         );
 
+    valid <= valid_pipe(valid_pipe'left);
+
     process (clk) is
-        variable wa_v : fixed_t;
     begin
         if (rising_edge(clk)) then
             if (rst = '1') then
-                state <= S_SETUP1;
-                piping_counter <= 0;
+                valid_pipe <= (others => '0');
+            elsif (hold /= '1') then
+                b <= param.b - param.a;
+                c <= param.c - param.a;
+                p <= pixel - param.a;
 
-                b <= to_vector2(0, 0);
-                c <= to_vector2(0, 0);
-                p <= to_vector2(0, 0);
-                d <= to_fixed(0);
-                wbn <= to_fixed(0);
-                wcn <= to_fixed(0);
-                wb <= to_fixed(0);
-                wc <= to_fixed(0);
-                hit <= '0';
+                d1.a <= b.x;
+                d1.b <= c.y;
+                d2.a <= c.x;
+                d2.b <= b.y;
+                wbn1.a <= p.x;
+                wbn1.b <= c.y;
+                wbn2.a <= p.y;
+                wbn2.b <= c.x;
+                wcn1.a <= p.y;
+                wcn1.b <= b.x;
+                wcn2.a <= p.x;
+                wcn2.b <= b.y;
 
-                dgrstn <= '0';
-                dgen <= '0';
-                dgdivisor <= (others => '0');
-                dgdividend <= (others => '0');
-            else
-                dgrstn <= '1';
+                mul_fixed(d1);
+                mul_fixed(d2);
+                mul_fixed(wbn1);
+                mul_fixed(wbn2);
+                mul_fixed(wcn1);
+                mul_fixed(wcn2);
 
-                case (state) is
-                    when S_SETUP1 =>
-                        b <= param.b - param.a;
-                        c <= param.c - param.a;
-                        state <= S_SETUP2;
+                d <= resize_fixed(d1.r - d2.r);
+                wbn(wbn'right) <= resize_fixed(wbn1.r - wbn2.r);
+                wcn(wcn'right) <= resize_fixed(wcn1.r - wcn2.r);
 
-                    when S_SETUP2 =>
-                        d <= resize_fixed(b.x * c.y - c.x * b.y);
-                        state <= S_SETUP3;
+                dgdividend <= to_slv(to_fixed(1));
+                dgdivisor <= to_slv(d);
+                wbn(wbn'left downto wbn'right + 1) <= wbn(wbn'left - 1 downto wbn'right);
+                wcn(wbn'left downto wcn'right + 1) <= wcn(wbn'left - 1 downto wbn'right);
 
-                    when S_SETUP3 =>
-                        dgdividend <= std_logic_vector(to_signed(1, dgdividend'length));
-                        dgdivisor <= to_stdlogicvector(d);
-                        dgen <= '1';
-                        state <= S_SETUP4;
+                invd <= resize_fixed(to_sfixed(dgout, 24, -23));
 
-                    when S_SETUP4 =>
-                        if (dgvalid = '1') then
-                            invd <= to_sfixed(to_integer(signed(dgout(23 downto 0))), invd'left, invd'right);
-                            dgen <= '0';
-                            state <= S_PIPING;
-                        end if;
+                wbi.a <= wbn(wbn'left);
+                wbi.b <= invd;
+                wci.a <= wcn(wcn'left);
+                wci.b <= invd;
 
-                    when S_PIPING =>
-                        if (hold /= '1') then
-                            p <= pixel - param.a;
+                mul_fixed(wbi);
+                mul_fixed(wci);
 
-                            wbn <= resize_fixed(p.x * c.y - p.y * c.x);
-                            wcn <= resize_fixed(p.y * b.x - p.x * b.y);
+                wa <= resize_fixed(1 - wbi.r - wci.r);
+                wb <= wbi.r;
+                wc <= wci.r;
 
-                            wb <= resize_fixed(wbn * invd);
-                            wc <= resize_fixed(wcn * invd);
+                ina <= '1' when wa >= 0 and wa <= 1 else '0';
+                inb <= '1' when wb >= 0 and wb <= 1 else '0';
+                inc <= '1' when wc >= 0 and wc <= 1 else '0';
 
-                            wa_v := resize_fixed(1 - wb - wc);
-                            ina <= '1' when (wa_v >= 0 and wa_v <= 1) else '0';
-                            inb <= '1' when (wb >= 0 and wb <= 1) else '0';
-                            inc <= '1' when (wc >= 0 and wc <= 1) else '0';
+                hit <= ina and inb and inc;
+                color <= (others => '1');
 
-                            hit <= ina and inb and inc;
-                            color <= (others => '1');
+                valid_pipe(valid_pipe'left downto valid_pipe'right + 1) <= valid_pipe(valid_pipe'left - 1 downto valid_pipe'right);
 
-                            if (piping_counter < 5) then
-                                piping_counter <= piping_counter + 1;
-                            else
-                                valid <= '1';
-                            end if;
-                        end if;
-                end case;
+                valid_pipe(valid_pipe'right) <= '1';
             end if;
         end if;
     end process;
