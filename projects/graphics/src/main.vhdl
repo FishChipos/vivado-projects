@@ -1,5 +1,6 @@
 library ieee;
 use ieee.std_logic_1164.all;
+use ieee.fixed_pkg.all;
 
 use work.types.all;
 use work.ip.all;
@@ -15,16 +16,22 @@ entity main is
 end entity;
 
 architecture arch of main is
-    constant TRIANGLE_VERTICES : param_triangle_t := (
-        to_vector2(0, 0),
-        to_vector2(1280, 0),
-        to_vector2(0, 720)
+    constant TRIANGLE_VERTICES : vertices_t(0 to 2)(
+        x(11 downto 0),
+        y(10 downto 0)
+    ) := (
+        (to_sfixed(0, 11, 0), to_sfixed(0, 10, 0)),
+        (to_sfixed(0, 11, 0), to_sfixed(720, 10, 0)),
+        (to_sfixed(1280, 11, 0), to_sfixed(0, 10, 0))
     );
 
-    type vid_timing_pipe_t is array (67 downto 1) of vid_timing_t;
+    type vid_timing_pipe_t is array (0 to 66) of vid_timing_t;
     signal vid_timing_pipe : vid_timing_pipe_t;
 
-    signal pixel : vector2_t;
+    signal pixel : vector2_t(
+        x(11 downto 0),
+        y(10 downto 0)
+    );
 
     signal triangle_hold : std_logic;
     signal triangle_valid : std_logic;
@@ -82,7 +89,7 @@ begin
             rst => buttons.reset,
             hold => triangle_hold,
             pixel => pixel,
-            param => TRIANGLE_VERTICES,
+            vertices => TRIANGLE_VERTICES,
             valid => triangle_valid,
             hit => triangle_hit,
             color => triangle_color
@@ -93,7 +100,8 @@ begin
     begin
         if (rising_edge(pixel_clk)) then
             if (buttons.reset = '1') then
-                pixel <= to_vector2(0, 0);
+                pixel <= (to_sfixed(0, pixel.x), to_sfixed(0, pixel.y));
+                vid.timing <= (others => '0');
                 triangle_hold <= '0';
             else
                 if (triangle_hit = '1') then
@@ -102,14 +110,26 @@ begin
                     vid.data <= (others => '0');
                 end if;
 
-                vid.timing <= vid_timing_pipe(vid_timing_pipe'left);
+                vid.timing <= vid_timing_pipe(vid_timing_pipe'high);
 
-                vid_timing_pipe <= vid_timing_pipe(vid_timing_pipe'left - 1 downto vid_timing_pipe'right) & vid_timing;
-
-                if (vid_timing.vde = '1') then
-                    pixel <= next_pixel(pixel);
+                if (vid_timing.vsync = '1') then
+                    pixel <= (to_sfixed(0, pixel.x), to_sfixed(0, pixel.y));
+                elsif (vid_timing.vde = '1') then
+                    if (pixel.x >= 1280 - 1) then
+                        pixel.x <= to_sfixed(0, pixel.x);
+                        pixel.y <= resize(pixel.y + 1, pixel.y);
+                    else
+                        pixel.x <= resize(pixel.x + 1, pixel.x);
+                    end if;
                 end if;
             end if;
+        end if;
+    end process;
+
+    process (pixel_clk) is
+    begin
+        if (rising_edge(pixel_clk)) then
+            vid_timing_pipe <= (vid_timing, vid_timing_pipe(0 to vid_timing_pipe'high - 1));
         end if;
     end process;
 end architecture;

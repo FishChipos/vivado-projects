@@ -5,7 +5,6 @@ use ieee.fixed_pkg.all;
 
 use work.graphics.all;
 use work.vector2.all;
-use work.fixed.all;
 use work.types.all;
 use work.ip.all;
 
@@ -14,8 +13,14 @@ entity triangle is
         clk : in std_logic;
         rst : in std_logic;
         hold : in std_logic;
-        pixel : in vector2_t;
-        param : in param_triangle_t;
+        pixel : in vector2_t(
+            x(11 downto 0),
+            y(10 downto 0)
+        );
+        vertices : in vertices_t(0 to 2)(
+            x(11 downto 0),
+            y(10 downto 0)
+        );
         valid : out std_logic;
         hit : out std_logic;
         color : out rgb_t
@@ -23,57 +28,97 @@ entity triangle is
 end entity;
 
 architecture arch of triangle is
-    constant LATENCY : natural := 15;    
-    constant LATENCY_DG : natural := 52;
-    signal valid_pipe : std_logic_vector(LATENCY + LATENCY_DG downto 1);
+    constant LATENCY : natural := 10;
+    constant LATENCY_DG : natural := 32;
+    signal valid_pipe : std_logic_vector(0 to LATENCY + LATENCY_DG - 1);
 
-    signal b : vector2_t;
-    signal c : vector2_t;
+    type sfixed_pipe_t is array (natural range <>) of sfixed;
 
-    signal d1 : fixed_mul_t;
-    signal d2 : fixed_mul_t;
-    signal d : fixed_t;
-    signal invd : fixed_t;
+    -- 1 cycle.
+    type s1_t is record
+        b : vector2_t(
+            x(12 downto 0),
+            y(11 downto 0)
+        );
+        c : vector2_t(
+            x(12 downto 0),
+            y(11 downto 0)
+        );
+        p : vector2_t(
+            x(12 downto 0),
+            y(11 downto 0)
+        );
+    end record;
 
-    signal p : vector2_t;
+    -- 2 cycles.
+    type s2_t is record
+        d1 : sfixed_pipe_t(0 to 1)(24 downto 0);
+        d2 : sfixed_pipe_t(0 to 1)(24 downto 0);
+        wbn1 : sfixed_pipe_t(0 to 1)(24 downto 0);
+        wbn2 : sfixed_pipe_t(0 to 1)(24 downto 0);
+        wcn1 : sfixed_pipe_t(0 to 1)(24 downto 0);
+        wcn2 : sfixed_pipe_t(0 to 1)(24 downto 0);
+    end record;
 
-    signal wbn1 : fixed_mul_t;
-    signal wbn2 : fixed_mul_t;
-    signal wcn1 : fixed_mul_t;
-    signal wcn2 : fixed_mul_t;
+    -- 1 cycle.
+    type s3_t is record
+        one : sfixed(1 downto 0);
+        d : sfixed(25 downto 0);
+        wbn : sfixed_pipe_t(0 to LATENCY_DG - 1)(25 downto 0);
+        wcn : sfixed_pipe_t(0 to LATENCY_DG - 1)(25 downto 0);
+    end record;
 
-    type pipe_waitdg_t is array (LATENCY_DG + 2 downto 1) of fixed_t;
-    signal wbn : pipe_waitdg_t;
-    signal wcn : pipe_waitdg_t;
+    -- LATENCY_DG cycles.
+    signal invd_slv : std_logic_vector(31 downto 0);
 
-    signal wbi : fixed_mul_t;
-    signal wci : fixed_mul_t;
+    -- 1 cycle.
+    type s4_t is record
+        invd : sfixed(1 downto -26);
+    end record;
 
-    signal wa : fixed_t;
-    signal wb : fixed_t;
-    signal wc : fixed_t;
+    -- 2 cycles.
+    type s5_t is record
+        wb : sfixed_pipe_t(0 to 1)(27 downto -26);
+        wc : sfixed_pipe_t(0 to 1)(27 downto -26);
+    end record;
 
-    signal ina : std_logic;
-    signal inb : std_logic;
-    signal inc : std_logic;
+    -- 1 cycle.
+    type s6_t is record
+        wa : sfixed(28 downto -26);
+        wb : sfixed(27 downto -26);
+        wc : sfixed(27 downto -26);
+    end record;
 
-    signal dgdivisor : std_logic_vector(23 downto 0);
-    signal dgdividend : std_logic_vector(23 downto 0);
-    signal dgout : std_logic_vector(47 downto 0);
+    -- 1 cycle.
+    type s7_t is record
+        ina : std_logic;
+        inb : std_logic;
+        inc : std_logic;
+    end record;
+
+    -- 1 cycle to pipe into output registers.
+
+    signal s1 : s1_t;
+    signal s2 : s2_t;
+    signal s3 : s3_t;
+    signal s4 : s4_t;
+    signal s5 : s5_t;
+    signal s6 : s6_t;
+    signal s7 : s7_t;
 begin
     div_gen_0_inst : div_gen_0
         port map (
             aclk => clk,
             aclken => not hold,
             s_axis_divisor_tvalid => '1',
-            s_axis_divisor_tdata => dgdivisor,
+            s_axis_divisor_tdata => (25 downto 0 => to_slv(s3.d), others => '1'),
             s_axis_dividend_tvalid => '1',
-            s_axis_dividend_tdata => dgdividend,
+            s_axis_dividend_tdata => (1 downto 0 => to_slv(s3.one), others => '1'),
             m_axis_dout_tvalid => open,
-            m_axis_dout_tdata => dgout
+            m_axis_dout_tdata => invd_slv
         );
 
-    valid <= valid_pipe(valid_pipe'left);
+    valid <= valid_pipe(valid_pipe'high);
 
     process (clk) is
     begin
@@ -81,63 +126,51 @@ begin
             if (rst = '1') then
                 valid_pipe <= (others => '0');
             elsif (hold /= '1') then
-                b <= param.b - param.a;
-                c <= param.c - param.a;
-                p <= pixel - param.a;
+                s1 <= (
+                    b => vertices(1) - vertices(0),
+                    c => vertices(2) - vertices(0),
+                    p => pixel - vertices(0)
+                );
 
-                d1.a <= b.x;
-                d1.b <= c.y;
-                d2.a <= c.x;
-                d2.b <= b.y;
-                wbn1.a <= p.x;
-                wbn1.b <= c.y;
-                wbn2.a <= p.y;
-                wbn2.b <= c.x;
-                wcn1.a <= p.y;
-                wcn1.b <= b.x;
-                wcn2.a <= p.x;
-                wcn2.b <= b.y;
+                s2 <= (
+                    d1 => (s1.b.x * s1.c.y, s2.d1(0)),
+                    d2 => (s1.c.x * s1.b.y, s2.d2(0)),
+                    wbn1 => (s1.p.x * s1.c.y, s2.wbn1(0)),
+                    wbn2 => (s1.p.y * s1.c.x, s2.wbn2(0)),
+                    wcn1 => (s1.p.y * s1.b.x, s2.wcn1(0)),
+                    wcn2 => (s1.p.x * s1.b.y, s2.wcn2(0))
+                );
 
-                mul_fixed(d1);
-                mul_fixed(d2);
-                mul_fixed(wbn1);
-                mul_fixed(wbn2);
-                mul_fixed(wcn1);
-                mul_fixed(wcn2);
+                s3 <= (
+                    one => "01",
+                    d => s2.d1(1) - s2.d2(1),
+                    wbn => (s2.wbn1(1) - s2.wbn2(1), s3.wbn(0 to s3.wbn'high - 1)),
+                    wcn => (s2.wcn1(1) - s2.wcn2(1), s3.wcn(0 to s3.wcn'high - 1))
+                );
 
-                d <= resize_fixed(d1.r - d2.r);
-                wbn(wbn'right) <= resize_fixed(wbn1.r - wbn2.r);
-                wcn(wcn'right) <= resize_fixed(wcn1.r - wcn2.r);
+                s4 <= (
+                    invd => to_sfixed(invd_slv(27 downto 0), s4.invd)
+                );
 
-                dgdividend <= to_slv(to_fixed(1));
-                dgdivisor <= to_slv(d);
-                wbn(wbn'left downto wbn'right + 1) <= wbn(wbn'left - 1 downto wbn'right);
-                wcn(wbn'left downto wcn'right + 1) <= wcn(wbn'left - 1 downto wbn'right);
+                s5 <= (
+                    wb => (s3.wbn(s3.wbn'high) * s4.invd, s5.wb(0)),
+                    wc => (s3.wcn(s3.wcn'high) * s4.invd, s5.wc(0))
+                );
 
-                invd <= resize_fixed(to_sfixed(dgout, 24, -23));
+                s6 <= (
+                    wa => resize(to_sfixed(1, 1, 0) - s5.wb(1) - s5.wc(1), 28, -26),
+                    wb => s5.wb(1),
+                    wc => s5.wc(1)
+                );
 
-                wbi.a <= wbn(wbn'left);
-                wbi.b <= invd;
-                wci.a <= wcn(wcn'left);
-                wci.b <= invd;
+                s7.ina <= '1' when s6.wa >= 0 and s6.wa <= 1 else '0';
+                s7.inb <= '1' when s6.wb >= 0 and s6.wb <= 1 else '0';
+                s7.inc <= '1' when s6.wc >= 0 and s6.wc <= 1 else '0';
 
-                mul_fixed(wbi);
-                mul_fixed(wci);
-
-                wa <= resize_fixed(1 - wbi.r - wci.r);
-                wb <= wbi.r;
-                wc <= wci.r;
-
-                ina <= '1' when wa >= 0 and wa <= 1 else '0';
-                inb <= '1' when wb >= 0 and wb <= 1 else '0';
-                inc <= '1' when wc >= 0 and wc <= 1 else '0';
-
-                hit <= ina and inb and inc;
+                hit <= s7.ina and s7.inb and s7.inc;
                 color <= (others => '1');
 
-                valid_pipe(valid_pipe'left downto valid_pipe'right + 1) <= valid_pipe(valid_pipe'left - 1 downto valid_pipe'right);
-
-                valid_pipe(valid_pipe'right) <= '1';
+                valid_pipe <= ('1', valid_pipe(0 to valid_pipe'high - 1));
             end if;
         end if;
     end process;
