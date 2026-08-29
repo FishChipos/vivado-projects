@@ -9,7 +9,6 @@ package vector2 is
 
     function "+" (left, right : vector2_t) return vector2_t;
     function "-" (left, right : vector2_t) return vector2_t;
-    function "*" (left, right : vector2_t) return vector2_t;
 end package;
 
 package body vector2 is
@@ -21,10 +20,5 @@ package body vector2 is
     function "-" (left, right : vector2_t) return vector2_t is
     begin
         return (left.x - right.x, left.y - right.y);
-    end function;
-
-    function "*" (left, right : vector2_t) return vector2_t is
-    begin
-        return (left.x * right.x, left.y * right.y);
     end function;
 end package body;

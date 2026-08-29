@@ -25,7 +25,7 @@ architecture arch of main is
         (to_sfixed(1280, 11, 0), to_sfixed(0, 10, 0))
     );
 
-    type vid_timing_pipe_t is array (0 to 66) of vid_timing_t;
+    type vid_timing_pipe_t is array (0 to 45) of vid_timing_t;
     signal vid_timing_pipe : vid_timing_pipe_t;
 
     signal pixel : vector2_t(
@@ -94,7 +94,6 @@ begin
             hit => triangle_hit,
             color => triangle_color
         );
-
 
     process (pixel_clk) is
     begin

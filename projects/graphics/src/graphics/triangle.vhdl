@@ -28,7 +28,7 @@ entity triangle is
 end entity;
 
 architecture arch of triangle is
-    constant LATENCY : natural := 10;
+    constant LATENCY : natural := 14;
     constant LATENCY_DG : natural := 32;
     signal valid_pipe : std_logic_vector(0 to LATENCY + LATENCY_DG - 1);
 
@@ -50,14 +50,14 @@ architecture arch of triangle is
         );
     end record;
 
-    -- 2 cycles.
+    -- 3 cycles.
     type s2_t is record
-        d1 : sfixed_pipe_t(0 to 1)(24 downto 0);
-        d2 : sfixed_pipe_t(0 to 1)(24 downto 0);
-        wbn1 : sfixed_pipe_t(0 to 1)(24 downto 0);
-        wbn2 : sfixed_pipe_t(0 to 1)(24 downto 0);
-        wcn1 : sfixed_pipe_t(0 to 1)(24 downto 0);
-        wcn2 : sfixed_pipe_t(0 to 1)(24 downto 0);
+        d1 : sfixed_pipe_t(0 to 2)(24 downto 0);
+        d2 : sfixed_pipe_t(0 to 2)(24 downto 0);
+        wbn1 : sfixed_pipe_t(0 to 2)(24 downto 0);
+        wbn2 : sfixed_pipe_t(0 to 2)(24 downto 0);
+        wcn1 : sfixed_pipe_t(0 to 2)(24 downto 0);
+        wcn2 : sfixed_pipe_t(0 to 2)(24 downto 0);
     end record;
 
     -- 1 cycle.
@@ -76,10 +76,11 @@ architecture arch of triangle is
         invd : sfixed(1 downto -26);
     end record;
 
-    -- 2 cycles.
+    -- 5 cycles.
+    -- This will use chained DSPs so MREG and PREG need to be inferred twice.
     type s5_t is record
-        wb : sfixed_pipe_t(0 to 1)(27 downto -26);
-        wc : sfixed_pipe_t(0 to 1)(27 downto -26);
+        wb : sfixed_pipe_t(0 to 4)(27 downto -26);
+        wc : sfixed_pipe_t(0 to 4)(27 downto -26);
     end record;
 
     -- 1 cycle.
@@ -133,19 +134,19 @@ begin
                 );
 
                 s2 <= (
-                    d1 => (s1.b.x * s1.c.y, s2.d1(0)),
-                    d2 => (s1.c.x * s1.b.y, s2.d2(0)),
-                    wbn1 => (s1.p.x * s1.c.y, s2.wbn1(0)),
-                    wbn2 => (s1.p.y * s1.c.x, s2.wbn2(0)),
-                    wcn1 => (s1.p.y * s1.b.x, s2.wcn1(0)),
-                    wcn2 => (s1.p.x * s1.b.y, s2.wcn2(0))
+                    d1 => (s1.b.x * s1.c.y, s2.d1(0 to 1)),
+                    d2 => (s1.c.x * s1.b.y, s2.d2(0 to 1)),
+                    wbn1 => (s1.p.x * s1.c.y, s2.wbn1(0 to 1)),
+                    wbn2 => (s1.p.y * s1.c.x, s2.wbn2(0 to 1)),
+                    wcn1 => (s1.p.y * s1.b.x, s2.wcn1(0 to 1)),
+                    wcn2 => (s1.p.x * s1.b.y, s2.wcn2(0 to 1))
                 );
 
                 s3 <= (
                     one => "01",
                     d => s2.d1(1) - s2.d2(1),
-                    wbn => (s2.wbn1(1) - s2.wbn2(1), s3.wbn(0 to s3.wbn'high - 1)),
-                    wcn => (s2.wcn1(1) - s2.wcn2(1), s3.wcn(0 to s3.wcn'high - 1))
+                    wbn => (s2.wbn1(2) - s2.wbn2(2), s3.wbn(0 to s3.wbn'high - 1)),
+                    wcn => (s2.wcn1(2) - s2.wcn2(2), s3.wcn(0 to s3.wcn'high - 1))
                 );
 
                 s4 <= (
@@ -153,14 +154,14 @@ begin
                 );
 
                 s5 <= (
-                    wb => (s3.wbn(s3.wbn'high) * s4.invd, s5.wb(0)),
-                    wc => (s3.wcn(s3.wcn'high) * s4.invd, s5.wc(0))
+                    wb => (s3.wbn(s3.wbn'high) * s4.invd, s5.wb(0 to 3)),
+                    wc => (s3.wcn(s3.wcn'high) * s4.invd, s5.wc(0 to 3))
                 );
 
                 s6 <= (
-                    wa => resize(to_sfixed(1, 1, 0) - s5.wb(1) - s5.wc(1), 28, -26),
-                    wb => s5.wb(1),
-                    wc => s5.wc(1)
+                    wa => resize(to_sfixed(1, 1, 0) - s5.wb(4) - s5.wc(4), 28, -26),
+                    wb => s5.wb(4),
+                    wc => s5.wc(4)
                 );
 
                 s7.ina <= '1' when s6.wa >= 0 and s6.wa <= 1 else '0';
