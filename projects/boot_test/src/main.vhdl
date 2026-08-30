@@ -32,8 +32,8 @@ entity main is
 end entity;
 
 architecture arch of main is
-    signal btn_prev : std_logic;
-    signal btn_pressed : std_logic;
+    signal toggle_prev : std_logic;
+    signal toggle_pressed : std_logic;
 
     component ps7
         port (
@@ -89,10 +89,10 @@ begin
     process (clk) is
     begin
         if (rising_edge(clk)) then
-            btn_prev <= toggle;
-            btn_pressed <= toggle and not btn_prev;
+            toggle_prev <= toggle;
+            toggle_pressed <= toggle and not toggle_prev;
 
-            if (btn_pressed) then
+            if (toggle_pressed) then
                 led <= not led;
             end if;
         end if;
