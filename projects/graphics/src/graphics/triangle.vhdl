@@ -6,7 +6,6 @@ use ieee.fixed_pkg.all;
 use work.graphics.all;
 use work.vector2.all;
 use work.types.all;
-use work.ip.all;
 
 entity triangle is
     port (
@@ -62,18 +61,17 @@ architecture arch of triangle is
 
     -- 1 cycle.
     type s3_t is record
-        one : sfixed(1 downto 0);
         d : sfixed(25 downto 0);
         wbn : sfixed_pipe_t(0 to LATENCY_DG - 1)(25 downto 0);
         wcn : sfixed_pipe_t(0 to LATENCY_DG - 1)(25 downto 0);
     end record;
 
     -- LATENCY_DG cycles.
-    signal invd_slv : std_logic_vector(31 downto 0);
+    signal drec_slv : std_logic_vector(27 downto 0);
 
     -- 1 cycle.
     type s4_t is record
-        invd : sfixed(1 downto -26);
+        drec : sfixed(1 downto -26);
     end record;
 
     -- 5 cycles.
@@ -106,17 +104,22 @@ architecture arch of triangle is
     signal s5 : s5_t;
     signal s6 : s6_t;
     signal s7 : s7_t;
+
+    component drec_calc
+      port (
+        d : in std_logic_vector(25 downto 0);
+        clk : in std_logic;
+        clken : in std_logic;
+        drec : out std_logic_vector(27 downto 0)
+      );
+    end component;
 begin
-    div_gen_0_inst : div_gen_0
+    drec_calc_inst : drec_calc
         port map (
-            aclk => clk,
-            aclken => not hold,
-            s_axis_divisor_tvalid => '1',
-            s_axis_divisor_tdata => (25 downto 0 => to_slv(s3.d), others => '1'),
-            s_axis_dividend_tvalid => '1',
-            s_axis_dividend_tdata => (1 downto 0 => to_slv(s3.one), others => '1'),
-            m_axis_dout_tvalid => open,
-            m_axis_dout_tdata => invd_slv
+            clk => clk,
+            clken => not hold,
+            d => to_slv(s3.d),
+            drec => drec_slv
         );
 
     valid <= valid_pipe(valid_pipe'high);
@@ -143,19 +146,18 @@ begin
                 );
 
                 s3 <= (
-                    one => "01",
                     d => s2.d1(1) - s2.d2(1),
                     wbn => (s2.wbn1(2) - s2.wbn2(2), s3.wbn(0 to s3.wbn'high - 1)),
                     wcn => (s2.wcn1(2) - s2.wcn2(2), s3.wcn(0 to s3.wcn'high - 1))
                 );
 
                 s4 <= (
-                    invd => to_sfixed(invd_slv(27 downto 0), s4.invd)
+                    drec => to_sfixed(drec_slv(27 downto 0), s4.drec)
                 );
 
                 s5 <= (
-                    wb => (s3.wbn(s3.wbn'high) * s4.invd, s5.wb(0 to 3)),
-                    wc => (s3.wcn(s3.wcn'high) * s4.invd, s5.wc(0 to 3))
+                    wb => (s3.wbn(s3.wbn'high) * s4.drec, s5.wb(0 to 3)),
+                    wc => (s3.wcn(s3.wcn'high) * s4.drec, s5.wc(0 to 3))
                 );
 
                 s6 <= (

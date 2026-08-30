@@ -15,7 +15,7 @@ package types is
     end record;
 
     type vid_t is record
-        data : rgb_t;
+        rgb : rgb_t;
         timing : vid_timing_t;
     end record;
 

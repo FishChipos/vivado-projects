@@ -3,7 +3,6 @@ use ieee.std_logic_1164.all;
 use ieee.fixed_pkg.all;
 
 use work.types.all;
-use work.ip.all;
 use work.graphics.all;
 use work.vector2.all;
 
@@ -46,41 +45,74 @@ architecture arch of main is
 
     signal vid : vid_t;
     signal vid_timing : vid_timing_t;
+
+    component clk_wiz
+        port (
+            sys_clk : in std_logic;
+            pixel_clk : out std_logic;
+            rst : in std_logic;
+            serial_clk : out std_logic
+        );
+    end component;
+
+    component vtc
+      port (
+        rst : in std_logic;
+        clken : in std_logic;
+        clk : in std_logic;
+        hsync : out std_logic;
+        vde : out std_logic;
+        vsync : out std_logic
+      );
+    end component;
+
+    component rgb_to_hdmi
+      port (
+        serial_clk : in std_logic;
+        rst : in std_logic;
+        pixel_clk : in std_logic;
+        rgb : in std_logic_vector(23 downto 0);
+        hsync : in std_logic;
+        vsync : in std_logic;
+        vde : in std_logic;
+        clk_n : out std_logic;
+        data_p : out std_logic_vector(2 downto 0);
+        clk_p : out std_logic;
+        data_n : out std_logic_vector(2 downto 0)
+      );
+    end component;
 begin
-    clk_wiz_0_inst : clk_wiz_0
+    clk_wiz_inst : clk_wiz
         port map (
             pixel_clk => pixel_clk,
             serial_clk => serial_clk,
-            reset => buttons.reset,
+            rst => buttons.reset,
             sys_clk => sys_clk
         );
 
-    v_tc_0_inst : v_tc_0
+    vtc_inst : vtc
         port map (
             clk => pixel_clk,
             clken => '1',
-            gen_clken => '1',
-            sof_state => '0',
-            hsync_out => vid_timing.hsync,
-            vsync_out => vid_timing.vsync,
-            active_video_out => vid_timing.vde,
-            resetn => not buttons.reset,
-            fsync_out => open
+            hsync => vid_timing.hsync,
+            vsync => vid_timing.vsync,
+            vde => vid_timing.vde,
+            rst => buttons.reset
         );
 
-    rgb2dvi_0_inst : rgb2dvi_0
+    rgb_to_hdmi_inst : rgb_to_hdmi
         port map (
-            tmds_clk_p => tmds.clk_p,
-            tmds_clk_n => tmds.clk_n,
-            tmds_data_p => tmds.data_p,
-            tmds_data_n => tmds.data_n,
-            arst => buttons.reset,
-            vid_pdata => vid.data,
-            vid_pvde => vid.timing.vde,
-            vid_phsync => vid.timing.hsync,
-            vid_pvsync => vid.timing.vsync,
-            pixelclk => pixel_clk,
-            serialclk => serial_clk
+            clk_p => tmds.clk_p,
+            clk_n => tmds.clk_n,
+            data_p => tmds.data_p,
+            data_n => tmds.data_n,
+            rst => buttons.reset,
+            rgb => vid.rgb,
+            vde => vid.timing.vde,
+            hsync => vid.timing.hsync,
+            vsync => vid.timing.vsync,
+            pixel_clk => pixel_clk,
+            serial_clk => serial_clk
         );
 
     triangle_inst : entity work.triangle
@@ -104,9 +136,9 @@ begin
                 triangle_hold <= '0';
             else
                 if (triangle_hit = '1') then
-                    vid.data <= triangle_color;
+                    vid.rgb <= triangle_color;
                 else
-                    vid.data <= (others => '0');
+                    vid.rgb <= (others => '0');
                 end if;
 
                 vid.timing <= vid_timing_pipe(vid_timing_pipe'high);
