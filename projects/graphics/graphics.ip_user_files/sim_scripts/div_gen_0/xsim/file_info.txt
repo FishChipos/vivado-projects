@@ -1,0 +1,2 @@
+div_gen_0.vhd,vhdl,xil_defaultlib,../../../../src/ip/div_gen_0/sim/div_gen_0.vhd,incdir="../../../../../../../../../AMDDesignTools/2026.1/Vivado/data/rsb/busdef"
+glbl.v,Verilog,xil_defaultlib,glbl.v

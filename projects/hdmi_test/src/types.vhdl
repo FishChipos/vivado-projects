@@ -12,7 +12,7 @@ package types is
     subtype rgb_t is std_logic_vector(23 downto 0);
 
     type vid_t is record
-        data : rgb_t;
+        rgb : rgb_t;
         hsync : std_logic;
         vsync : std_logic;
         vde : std_logic;
