@@ -2,7 +2,7 @@
 
 ## Building the Projects
 
-Vivado and Vitis Unified are used for this project.
+Vivado and Vitis Unified are used for these projects. The VHDL version used is VHDL-2008.
 
 1. Clone the repository alongside its submodules.
 
