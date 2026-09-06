@@ -3,6 +3,6 @@ standard = "2008"
 
 [libraries]
 xil_defaultlib.files = [
-    "src/**/*.vhdl",
-    "tb/**/*.vhdl"
+    "src/design/*.vhdl",
+    "src/sim/*.vhdl"
 ]

@@ -33,6 +33,16 @@ architecture arch of triangle is
 
     type sfixed_pipe_t is array (natural range <>) of sfixed;
 
+    function shift_in (pipe : sfixed_pipe_t; val : sfixed) return sfixed_pipe_t is
+    begin
+        return (val, pipe(pipe'low to pipe'high - 1));
+    end function;
+
+    function peek (pipe : sfixed_pipe_t) return sfixed is
+    begin
+        return pipe(pipe'high);
+    end function;
+
     -- 1 cycle.
     type s1_t is record
         b : vector2_t(
@@ -106,12 +116,12 @@ architecture arch of triangle is
     signal s7 : s7_t;
 
     component drec_calc
-      port (
-        d : in std_logic_vector(25 downto 0);
-        clk : in std_logic;
-        clken : in std_logic;
-        drec : out std_logic_vector(27 downto 0)
-      );
+        port (
+            d : in std_logic_vector(25 downto 0);
+            clk : in std_logic;
+            clken : in std_logic;
+            drec : out std_logic_vector(27 downto 0)
+        );
     end component;
 begin
     drec_calc_inst : drec_calc
@@ -137,18 +147,18 @@ begin
                 );
 
                 s2 <= (
-                    d1 => (s1.b.x * s1.c.y, s2.d1(0 to 1)),
-                    d2 => (s1.c.x * s1.b.y, s2.d2(0 to 1)),
-                    wbn1 => (s1.p.x * s1.c.y, s2.wbn1(0 to 1)),
-                    wbn2 => (s1.p.y * s1.c.x, s2.wbn2(0 to 1)),
-                    wcn1 => (s1.p.y * s1.b.x, s2.wcn1(0 to 1)),
-                    wcn2 => (s1.p.x * s1.b.y, s2.wcn2(0 to 1))
+                    d1 => shift_in(s2.d1, s1.b.x * s1.c.y),
+                    d2 => shift_in(s2.d2, s1.c.x * s1.b.y),
+                    wbn1 => shift_in(s2.wbn1, s1.p.x * s1.c.y),
+                    wbn2 => shift_in(s2.wbn2, s1.p.y * s1.c.x),
+                    wcn1 => shift_in(s2.wcn1, s1.p.y * s1.b.x),
+                    wcn2 => shift_in(s2.wcn2, s1.p.x * s1.b.y)
                 );
 
                 s3 <= (
                     d => s2.d1(1) - s2.d2(1),
-                    wbn => (s2.wbn1(2) - s2.wbn2(2), s3.wbn(0 to s3.wbn'high - 1)),
-                    wcn => (s2.wcn1(2) - s2.wcn2(2), s3.wcn(0 to s3.wcn'high - 1))
+                    wbn => shift_in(s3.wbn, peek(s2.wbn1) - peek(s2.wbn2)),
+                    wcn => shift_in(s3.wcn, peek(s2.wcn1) - peek(s2.wcn2))
                 );
 
                 s4 <= (
@@ -156,14 +166,14 @@ begin
                 );
 
                 s5 <= (
-                    wb => (s3.wbn(s3.wbn'high) * s4.drec, s5.wb(0 to 3)),
-                    wc => (s3.wcn(s3.wcn'high) * s4.drec, s5.wc(0 to 3))
+                    wb => shift_in(s5.wb, peek(s3.wbn) * s4.drec),
+                    wc => shift_in(s5.wc, peek(s3.wcn) * s4.drec)
                 );
 
                 s6 <= (
-                    wa => resize(to_sfixed(1, 1, 0) - s5.wb(4) - s5.wc(4), 28, -26),
-                    wb => s5.wb(4),
-                    wc => s5.wc(4)
+                    wa => resize(to_sfixed(1, 1, 0) - peek(s5.wb) - peek(s5.wc), 28, -26),
+                    wb => peek(s5.wb),
+                    wc => peek(s5.wc)
                 );
 
                 s7.ina <= '1' when s6.wa >= 0 and s6.wa <= 1 else '0';
